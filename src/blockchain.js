@@ -25,6 +25,15 @@ class Blockchain {
 
     // 挖矿
     mine() {
+        const newBlock = this.generateNewBlock();
+        // 如果区块合法且区块链合法，就新增该区块
+        if (this.isValidBlock(newBlock) && this.isValidChain()) {
+            this.blockchain.push(newBlock);
+        }
+    }
+
+    // 生成新区块
+    generateNewBlock() {
         let nouce = 0;
         const index = this.blockchain.length;
         const prevHash = this.getLastBlock().hash;
@@ -32,22 +41,18 @@ class Blockchain {
         const data = this.data;
 
         let hash = this.computeHash(index, prevHash, timestamp, data, nouce);
-        while(hash.slice(0, this.difficulty) !== '0'.repeat(this.difficulty)) {
+        while (hash.slice(0, this.difficulty) !== '0'.repeat(this.difficulty)) {
             nouce++;
             hash = this.computeHash(index, prevHash, timestamp, data, nouce);
         }
-        console.log('挖矿结束！信息如下：', {
+        return {
             index,
             data,
             prevHash,
             timestamp,
             nouce,
             hash
-        });
-    }
-
-    // 生成新区块
-    generateNewBlock() {
+        };
     }
 
     // 计算哈希
@@ -56,17 +61,45 @@ class Blockchain {
     }
 
     // 校验区块
-    isValidBlock() {
-
+    isValidBlock(block) {
+        const prevBlock = this.blockchain[block.index - 1];
+        if (prevBlock.index + 1 !== block.index) {
+            console.log('区块索引不合法:', block);
+            return false;
+        } else if (prevBlock.hash !== block.prevHash) {
+            console.log('区块没有正确指向前一区块:', block);
+            return false;
+        } else if (block.timestamp <= prevBlock.timestamp) {
+            console.log('区块时间戳不合法:', block);
+            return false;
+        } else if (this.computeHash(block.index, block.prevHash, block.timestamp, block.data, block.nouce) !== block.hash) {
+            console.log('区块哈希不合法');
+            return false;
+        } else if (block.hash.slice(0, this.difficulty) !== '0'.repeat(this.difficulty)) {
+            console.log('区块难度不合法');
+            return false;
+        }
+        return true;
     }
 
     // 校验区块链
-    isValidChain() {
-
+    isValidChain(chain = this.blockchain) {
+        if (JSON.stringify(chain[0]) !== JSON.stringify(genesisBlock)) {
+            console.log('创世区块不合法');
+            return false;
+        }
+        for (let i = chain.length - 1; i >= 1; i--) {
+            if (!this.isValidBlock(chain[i])) {
+                return false;
+            }
+        }
+        return true;
     }
 }
 
-let bc = new Blockchain();
-bc.mine();
-console.log(new Date().getTime());
-console.log(Date.now());
+// let bc = new Blockchain();
+// bc.mine();
+// bc.mine();
+// bc.mine();
+// bc.mine();
+// console.log(bc.blockchain);
