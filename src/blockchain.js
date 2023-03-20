@@ -29,7 +29,9 @@ class Blockchain {
         // 如果区块合法且区块链合法，就新增该区块
         if (this.isValidBlock(newBlock) && this.isValidChain()) {
             this.blockchain.push(newBlock);
+            return newBlock;
         }
+        return null;
     }
 
     // 生成新区块
@@ -103,3 +105,5 @@ class Blockchain {
 // bc.mine();
 // bc.mine();
 // console.log(bc.blockchain);
+
+module.exports = Blockchain;
