@@ -14,7 +14,7 @@ const formatLog = (data) => {
         head: headers
     });
     const result = data.map(item => {
-        return headers.map(key => item[key]);
+        return headers.map(key => JSON.stringify(item[key], null, 1));
     });
     table.push(...result);
     console.log(table.toString());
@@ -24,9 +24,28 @@ vorpal.command('hello', '向这个程序问好，你会得到友好的回应').a
     callback();
 });
 
+// 查看区块详情
+vorpal.command('detail <index>', '查看区块详情').action(function (args, callback) {
+    const block = blockchain.blockchain[args.index];
+    if (block) {
+        console.log(JSON.stringify(block, null, 1));
+    } else {
+        this.log('区块不存在');
+    }
+    callback();
+});
+
+// 实现交易转账的命令行
+vorpal.command('transfer <from> <to> <amount>', '交易转账').action(function (args, callback) {
+    let trans = blockchain.transfer(args.from, args.to, args.amount);
+    this.log('交易成功，交易信息为：');
+    formatLog(trans);
+    callback();
+});
+
 // 实现挖矿的命令行
-vorpal.command('mine', '挖矿').action(function (args, callback) {
-    const newBlock = blockchain.mine();
+vorpal.command('mine <address>', '挖矿').action(function (args, callback) {
+    const newBlock = blockchain.mine(args.address);
     if (newBlock) {
         this.log('挖矿成功，新区块为：');
         formatLog(newBlock);

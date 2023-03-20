@@ -23,12 +23,32 @@ class Blockchain {
         return this.blockchain[this.blockchain.length - 1];
     }
 
+    // 实现交易转账，姑且不使用UTXO
+    transfer(from, to, amount) {
+
+        //TODO: 签名校验
+
+        const transObj = {
+            from,
+            to,
+            amount
+        }
+        this.data.push(transObj);
+        return transObj;
+    }
+
     // 挖矿
-    mine() {
+    mine(address) {
+
+        // 挖矿结束时的矿工奖励,写死奖励为100
+        this.transfer('0', address, 100);
+
         const newBlock = this.generateNewBlock();
+
         // 如果区块合法且区块链合法，就新增该区块
         if (this.isValidBlock(newBlock) && this.isValidChain()) {
             this.blockchain.push(newBlock);
+            this.data = [];
             return newBlock;
         }
         return null;
@@ -75,10 +95,10 @@ class Blockchain {
             console.log('区块时间戳不合法:', block);
             return false;
         } else if (this.computeHash(block.index, block.prevHash, block.timestamp, block.data, block.nouce) !== block.hash) {
-            console.log('区块哈希不合法');
+            console.log('区块哈希不合法:', block);
             return false;
         } else if (block.hash.slice(0, this.difficulty) !== '0'.repeat(this.difficulty)) {
-            console.log('区块难度不合法');
+            console.log('区块难度不合法:', block);
             return false;
         }
         return true;
