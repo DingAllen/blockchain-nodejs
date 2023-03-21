@@ -24,6 +24,13 @@ vorpal.command('hello', '向这个程序问好，你会得到友好的回应').a
     callback();
 });
 
+// 查看账户余额
+vorpal.command('balance <address>', '查看账户余额').action(function (args, callback) {
+    const balance = blockchain.getBalance(args.address);
+    this.log({address: args.address, balance});
+    callback();
+});
+
 // 查看区块详情
 vorpal.command('detail <index>', '查看区块详情').action(function (args, callback) {
     const block = blockchain.blockchain[args.index];
@@ -38,8 +45,10 @@ vorpal.command('detail <index>', '查看区块详情').action(function (args, ca
 // 实现交易转账的命令行
 vorpal.command('transfer <from> <to> <amount>', '交易转账').action(function (args, callback) {
     let trans = blockchain.transfer(args.from, args.to, args.amount);
-    this.log('交易成功，交易信息为：');
-    formatLog(trans);
+    if (trans) {
+        this.log('交易成功，交易信息为：');
+        formatLog(trans);
+    }
     callback();
 });
 

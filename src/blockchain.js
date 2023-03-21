@@ -26,15 +26,46 @@ class Blockchain {
     // 实现交易转账，姑且不使用UTXO
     transfer(from, to, amount) {
 
+        if (from !== '0') {
+            // 交易非挖矿
+            const balance = this.getBalance(from);
+            if (balance < amount) {
+                console.log('余额不足:', {from, balance, amount});
+                return null;
+            }
+        }
+
         //TODO: 签名校验
 
         const transObj = {
             from,
             to,
             amount
-        }
+        };
         this.data.push(transObj);
         return transObj;
+    }
+
+    // 查看余额
+    getBalance(address) {
+        let balance = 0;
+        this.blockchain.forEach(block => {
+
+            // 排除创世区块
+            if (block.index === 0) {
+                return;
+            }
+
+            block.data.forEach(trans => {
+                if (address === trans.from) {
+                    balance -= trans.amount;
+                }
+                if (address === trans.to) {
+                    balance += trans.amount;
+                }
+            });
+        });
+        return balance;
     }
 
     // 挖矿
