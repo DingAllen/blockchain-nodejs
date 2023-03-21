@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const dgram = require("dgram");
+const {Wallet, verifySignature} = require('./rsa');
 
 // 创世区块
 const genesisBlock = {
@@ -16,6 +17,7 @@ class Blockchain {
     constructor() {
         this.blockchain = [genesisBlock];
         this.data = [];
+        this.remote = {};
         this.difficulty = 2;
 
         // 所有的网络节点信息，address，port
@@ -36,11 +38,10 @@ class Blockchain {
     bindP2p() {
 
         this.udp.on('message', (msg, rinfo) => {
-            const {address, port} = rinfo;
             const data = JSON.parse(msg.toString());
 
             if (data.type) {
-                this.dispatch(data, address, port);
+                this.dispatch(data, rinfo);
             }
         });
 
@@ -78,17 +79,39 @@ class Blockchain {
         this.udp.send(Buffer.from(msg), port, address);
     }
 
-    dispatch(data, address, port) {
+    boardcast(data) {
+        this.peers.forEach(peer => {
+            this.send(data, peer.port, peer.address);
+        });
+    }
+
+    dispatch(data, rinfo) {
         switch (data.type) {
             case 'newPeer':
-                // this.addPeer(address, port);
-                console.log('新节点加入：', {address, port});
+                this.addPeer(rinfo);
+                this.send({type: 'remoteAddress', data: rinfo}, rinfo.port, rinfo.address);
+                this.send({type: 'peerList', data: this.peers}, rinfo.port, rinfo.address);
+                console.log('[信息]：新节点加入：', rinfo);
+                this.boardcast({type: 'sayhi', data: rinfo});
+                break;
+            case 'remoteAddress':
+                // 存储地址，退出的时候用
+                this.remote = data.data;
+                break;
+            case 'peerList':
+                // 获取当前的节点列表
+                this.addPeers(data.data);
+                break;
+            case 'sayhi':
+                this.addPeer(data.data);
+                console.log('[信息]：新节点加入：', data.data);
                 break;
             default:
-                console.log('未知消息类型：', data);
+                console.log('[信息]：收到未知消息类型：', data);
                 break;
         }
     }
+
 
     // 作为种子节点使用
     ActAsSeed() {
@@ -112,7 +135,7 @@ class Blockchain {
             }
         }
 
-        //TODO: 签名校验
+        // TODO:签名校验
 
         const transObj = {
             from,
@@ -225,7 +248,20 @@ class Blockchain {
         }
         return true;
     }
+
+    addPeer(rinfo) {
+        if (!this.peers.find(peer => peer.address === rinfo.address && peer.port === rinfo.port)) {
+            this.peers.push(rinfo);
+        }
+    }
+
+    addPeers(peers) {
+        peers.forEach(peer => {
+            this.addPeer(peer);
+        });
+    }
 }
+
 
 // let bc = new Blockchain();
 // bc.mine();
