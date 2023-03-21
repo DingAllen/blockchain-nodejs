@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const dgram = require("dgram");
 
 // 创世区块
 const genesisBlock = {
@@ -16,6 +17,82 @@ class Blockchain {
         this.blockchain = [genesisBlock];
         this.data = [];
         this.difficulty = 2;
+
+        // 所有的网络节点信息，address，port
+        this.peers = [];
+        // 种子节点
+        this.seed = {port: 8001, address: 'localhost'};
+        this.isSeed = false;
+
+        this.udp = dgram.createSocket('udp4');
+        this.init();
+    }
+
+    init() {
+        this.bindP2p();
+        this.bindExit();
+    }
+
+    bindP2p() {
+
+        this.udp.on('message', (msg, rinfo) => {
+            const {address, port} = rinfo;
+            const data = JSON.parse(msg.toString());
+
+            if (data.type) {
+                this.dispatch(data, address, port);
+            }
+        });
+
+        this.udp.on('listening', () => {
+            const address = this.udp.address();
+            console.log(`udp listening ${address.address}:${address.port}`);
+        });
+
+        if (process.argv[2] === 'seed') {
+            this.ActAsSeed();
+            this.startNode(this.seed.port);
+        } else {
+            const port = process.argv[2] || 0;
+            this.startNode(port);
+        }
+    }
+
+    bindExit() {
+        this.udp.on('exit', () => {
+            console.log('[信息]：你不要走啊，我离不开你啊燕子');
+        });
+    }
+
+    startNode(port) {
+        this.udp.bind(port);
+
+        // 如果不是种子节点，就向种子节点发送通知
+        if (!this.isSeed) {
+            this.send({type: 'newPeer'}, this.seed.port, this.seed.address);
+        }
+    }
+
+    send(data, port, address) {
+        const msg = JSON.stringify(data);
+        this.udp.send(Buffer.from(msg), port, address);
+    }
+
+    dispatch(data, address, port) {
+        switch (data.type) {
+            case 'newPeer':
+                // this.addPeer(address, port);
+                console.log('新节点加入：', {address, port});
+                break;
+            default:
+                console.log('未知消息类型：', data);
+                break;
+        }
+    }
+
+    // 作为种子节点使用
+    ActAsSeed() {
+        this.isSeed = true;
     }
 
     // 获取最新区块

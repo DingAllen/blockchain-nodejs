@@ -109,12 +109,14 @@ const getPublicKey = (privateKey) => {
     return keyPair.getPublic('hex');
 }
 
-const trans = {from: 'a', to: 'b', amount: 10};
-const trans1 = {from: 'a1', to: 'b', amount: 10};
-const wallet = new Wallet('a');
-const signature = wallet.sign(trans);
-trans.signature = signature;
-trans1.signature = signature;
-console.log(signature)
-console.log('验证trans:', verifySignature(trans, wallet.getPublicKey()))
-console.log('验证trans1:', verifySignature(trans1, wallet.getPublicKey()))
+// const trans = {from: 'a', to: 'b', amount: 10};
+// const trans1 = {from: 'a1', to: 'b', amount: 10};
+// const wallet = new Wallet('a');
+// const signature = wallet.sign(trans);
+// trans.signature = signature;
+// trans1.signature = signature;
+// console.log(signature)
+// console.log('验证trans:', verifySignature(trans, wallet.getPublicKey()))
+// console.log('验证trans1:', verifySignature(trans1, wallet.getPublicKey()))
+
+module.exports = {Wallet, verifySignature};
