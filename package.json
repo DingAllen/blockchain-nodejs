@@ -12,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "cli-table": "^0.3.11",
+    "elliptic": "^6.5.4",
     "vorpal": "^1.12.0"
   }
 }
