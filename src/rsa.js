@@ -8,9 +8,9 @@ class Wallet {
     }
 
     // 签名
-    sign({from, to, amount}) {
+    sign({from, to, amount, timestamp}) {
 
-        const messageHash = genDigest({from, to, amount});
+        const messageHash = genDigest({from, to, amount, timestamp});
 
         // 对消息哈希值进行签名
         const keyBuffer = Buffer.from(this.keys.privateKey, 'hex');
@@ -32,13 +32,13 @@ class Wallet {
 }
 
 // 校验签名
-const verifySignature = ({from, to, amount, signature}, publicKey) => {
+const verifySignature = ({from, to, amount, timestamp, signature}, publicKey) => {
 
     // 将signature和publicKey从Buffer中还原回去
     signature = Buffer.from(signature, 'hex');
     publicKey = Buffer.from(publicKey, 'hex');
 
-    const messageHash = genDigest({from, to, amount});
+    const messageHash = genDigest({from, to, amount, timestamp});
     return secp256k1.ecdsaVerify(signature, messageHash, publicKey);
 }
 
@@ -50,8 +50,8 @@ const genMessage = ({from, to, amount}) => {
     return `${from}-${to}-${amount}`;
 }
 
-const genDigest = ({from, to, amount}) => {
-    return messageDigest(genMessage({from, to, amount}));
+const genDigest = ({from, to, amount, timestamp}) => {
+    return messageDigest(genMessage({from, to, amount, timestamp}));
 }
 
 // 生成公私钥对,并保存进json文件

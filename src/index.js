@@ -6,12 +6,14 @@ const blockchain = new BlockChain('dkx');
 
 const formatLog = (data) => {
 
-    if (!data) {
+    if (!data || data.length === 0) {
+        this.log('[信息]：您所查看的数据为空');
         return;
     }
     if (!Array.isArray(data)) {
         data = [data];
         if (data.length === 0) {
+            this.log('[信息]：您所查看的数据为空');
             return;
         }
     }
@@ -39,6 +41,12 @@ vorpal.command('chat <message>', '实现全局聊天的功能').action(function 
     callback();
 });
 
+// 查看还未打包的交易
+vorpal.command('pending', '查看还未打包的交易').action(function (args, callback) {
+    formatLog(blockchain.data);
+    callback();
+});
+
 // 查看本地钱包的地址
 vorpal.command('address', '查看本地钱包的地址').action(function (args, callback) {
     this.log(blockchain.wallet.getPublicKey());
@@ -47,7 +55,8 @@ vorpal.command('address', '查看本地钱包的地址').action(function (args, 
 
 // 查看账户余额
 vorpal.command('balance <address>', '查看账户余额').action(function (args, callback) {
-    const balance = blockchain.getBalance(args.address);
+    const address = args.address ? args.address : blockchain.wallet.getPublicKey();
+    const balance = blockchain.getBalance(address);
     this.log({address: args.address, balance});
     callback();
 });

@@ -25,7 +25,7 @@ class Blockchain {
         // 所有的网络节点信息，address，port
         this.peers = [];
         // 种子节点
-        this.seed = {port: 8001, address: 'localhost'};
+        this.seed = {port: 8001, address: '172.19.0.1'};
         this.isSeed = false;
 
         this.udp = dgram.createSocket('udp4');
@@ -96,7 +96,8 @@ class Blockchain {
                 this.send({
                     type: 'blockchain',
                     data: JSON.stringify({
-                        blockchain: this.blockchain
+                        blockchain: this.blockchain,
+                        trans: this.data
                     })
                 }, rinfo.port, rinfo.address);
                 this.addPeer(rinfo);
@@ -121,7 +122,16 @@ class Blockchain {
             case 'blockchain':
                 let allData = JSON.parse(data.data);
                 let newChain = allData.blockchain;
+                let newTrans = allData.trans;
                 this.replaceChain(newChain);
+                this.replaceTrans(newTrans);
+                break;
+            case 'trans':
+                if (!this.data.find(item => this.isEqualObj(item, data.data))) {
+                    console.log('[信息]：收到新交易：', data.data);
+                    this.addTrans(data.data);
+                    this.boardcast({type: 'trans', data: data.data});
+                }
                 break;
             case 'mine':
                 const lastBlock = this.getLastBlock();
@@ -157,6 +167,19 @@ class Blockchain {
     // 实现交易转账，姑且不使用UTXO
     trans(from, to, amount) {
 
+        const timestamp = Date.now();
+
+        // 签名校验
+        var signature = this.wallet.sign({from, to, amount, timestamp});
+
+        var transObj = {
+            from,
+            to,
+            amount,
+            timestamp,
+            signature
+        };
+
         if (from !== '0') {
             // 交易非挖矿
             const balance = this.getBalance(from);
@@ -164,17 +187,9 @@ class Blockchain {
                 console.log('余额不足:', {from, balance, amount});
                 return null;
             }
+            this.boardcast({type: 'trans', data: transObj});
         }
 
-        // 签名校验
-        var signature = this.wallet.sign({from, to, amount});
-
-        var transObj = {
-            from,
-            to,
-            amount,
-            signature
-        };
         this.data.push(transObj);
         return transObj;
     }
@@ -319,6 +334,31 @@ class Blockchain {
         peers.forEach(peer => {
             this.addPeer(peer);
         });
+    }
+
+    isEqualObj(obj1, obj2) {
+        const keys1 = Object.keys(obj1);
+        const keys2 = Object.keys(obj2);
+        if (keys1.length !== keys2.length) {
+            return false;
+        }
+        for (let key of keys1) {
+            if (obj1[key] !== obj2[key]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    addTrans(trans) {
+        if (this.isValidTrans(trans)) {
+            this.data.push(trans);
+        }
+    }
+
+    replaceTrans(newTrans) {
+        // 判断其中交易的合法性，留下合法交易
+        this.data = newTrans.filter(trans => this.isValidTrans(trans));
     }
 }
 
