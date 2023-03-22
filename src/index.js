@@ -5,12 +5,19 @@ const Table = require('cli-table');
 const blockchain = new BlockChain('dkx');
 
 const formatLog = (data) => {
+
+    if (!data) {
+        return;
+    }
     if (!Array.isArray(data)) {
         data = [data];
+        if (data.length === 0) {
+            return;
+        }
     }
     const first = data[0];
     const headers = Object.keys(first);
-    const table = new Table({
+    const table =  new Table({
         head: headers,
         colWidths: headers.map(() => 20),
         rowHeights: headers.map(() => 6)
@@ -23,6 +30,12 @@ const formatLog = (data) => {
 }
 vorpal.command('hello', '向这个程序问好，你会得到友好的回应').action(function (args, callback) {
     this.log('你好，帅哥!');
+    callback();
+});
+
+// 实现全局聊天的功能
+vorpal.command('chat <message>', '实现全局聊天的功能').action(function (args, callback) {
+    blockchain.chat(args.message);
     callback();
 });
 
@@ -76,7 +89,11 @@ vorpal.command('blockchain', '查看区块链').action(function (args, callback)
     callback();
 });
 
-
+// 查看网络节点列表
+vorpal.command('peers', '查看网络节点列表').action(function (args, callback) {
+    formatLog(blockchain.peers);
+    callback();
+});
 
 vorpal.exec('help');
 vorpal.delimiter('ding-chain => ').show();

@@ -95,7 +95,6 @@ class Blockchain {
                 this.boardcast({type: 'sayhi', data: rinfo});
                 this.addPeer(rinfo);
                 console.log('[信息]：新节点加入：', rinfo);
-                console.log('[信息]：当前节点列表：', this.peers);
                 break;
             case 'remoteAddress':
                 // 存储地址，退出的时候用
@@ -104,19 +103,23 @@ class Blockchain {
                 break;
             case 'peerList':
                 // 获取当前的节点列表
-                console.log('[信息]：获取到节点列表：', data.data)
                 this.addPeers(data.data);
-                console.log('[信息]：当前节点列表：', this.peers);
                 break;
             case 'sayhi':
                 this.addPeer(data.data);
                 console.log('[信息]：新节点加入：', data.data);
-                console.log('[信息]：当前节点列表：', this.peers);
+                break;
+            case 'chat':
+                console.log(`[${rinfo.address}:${rinfo.port}]：${data.data}`);
                 break;
             default:
                 console.log('[信息]：收到未知消息类型：', data);
                 break;
         }
+    }
+
+    chat(msg) {
+        this.boardcast({type: 'chat', data: msg});
     }
 
 
