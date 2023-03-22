@@ -93,6 +93,12 @@ class Blockchain {
                 this.send({type: 'remoteAddress', data: rinfo}, rinfo.port, rinfo.address);
                 this.send({type: 'peerList', data: this.peers}, rinfo.port, rinfo.address);
                 this.boardcast({type: 'sayhi', data: rinfo});
+                this.send({
+                    type: 'blockchain',
+                    data: JSON.stringify({
+                        blockchain: this.blockchain
+                    })
+                }, rinfo.port, rinfo.address);
                 this.addPeer(rinfo);
                 console.log('[信息]：新节点加入：', rinfo);
                 break;
@@ -111,6 +117,11 @@ class Blockchain {
                 break;
             case 'chat':
                 console.log(`[${rinfo.address}:${rinfo.port}]：${data.data}`);
+                break;
+            case 'blockchain':
+                let allData = JSON.parse(data.data);
+                let newChain = allData.blockchain;
+                this.replaceChain(newChain);
                 break;
             default:
                 console.log('[信息]：收到未知消息类型：', data);
@@ -238,8 +249,10 @@ class Blockchain {
     }
 
     // 校验区块
-    isValidBlock(block) {
-        const prevBlock = this.blockchain[block.index - 1];
+    isValidBlock(block, prevBlock) {
+        if (!prevBlock) {
+            prevBlock = this.blockchain[block.index - 1];
+        }
         if (prevBlock.index + 1 !== block.index) {
             console.log('区块索引不合法:', block);
             return false;
@@ -266,11 +279,20 @@ class Blockchain {
             return false;
         }
         for (let i = chain.length - 1; i >= 1; i--) {
-            if (!this.isValidBlock(chain[i])) {
+            if (!this.isValidBlock(chain[i], chain[i - 1])) {
                 return false;
             }
         }
         return true;
+    }
+
+    replaceChain(newChain) {
+        if (this.isValidChain(newChain) && newChain.length > this.blockchain.length) {
+            // 深拷贝
+            this.blockchain = JSON.parse(JSON.stringify(newChain));
+        } else {
+            console.log('[错误]：区块链不合法，无法更新');
+        }
     }
 
     addPeer(rinfo) {
