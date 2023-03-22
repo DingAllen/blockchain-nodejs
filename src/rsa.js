@@ -1,23 +1,25 @@
-var EC = require('elliptic').ec;
 var fs = require('fs');
-
-var ec = new EC('secp256k1');
+const crypto = require("crypto");
+const secp256k1 = require("secp256k1");
 
 class Wallet {
-    #keyPair = null;
-    #keys = null;
     constructor(name) {
-        [this.#keyPair, this.#keys] = this.genKeyPair(name);
+        this.keys = this.genKeyPair(name);
     }
 
     // 签名
     sign({from, to, amount}) {
-        const bufferMsg = Buffer.from(`${from}-${to}-${amount}`);
-        return Buffer.from(this.#keyPair.sign(bufferMsg).toDER()).toString('hex');
+
+        const messageHash = genDigest({from, to, amount});
+
+        // 对消息哈希值进行签名
+        const keyBuffer = Buffer.from(this.keys.privateKey, 'hex');
+        const signature = secp256k1.ecdsaSign(messageHash, keyBuffer).signature
+        return Buffer.from(signature).toString('hex');
     }
 
     getPublicKey() {
-        return this.#keys.publicKey;
+        return this.keys.publicKey;
     }
 
     genKeyPair(name) {
@@ -25,14 +27,31 @@ class Wallet {
         if (!keys) {
             keys = generateKeys(name);
         }
-        return [ec.keyFromPrivate(keys.privateKey, 'hex'), keys];
+        return keys;
     }
 }
 
 // 校验签名
 const verifySignature = ({from, to, amount, signature}, publicKey) => {
-    const bufferMsg = Buffer.from(`${from}-${to}-${amount}`);
-    return ec.keyFromPublic(publicKey, 'hex').verify(bufferMsg, signature);
+
+    // 将signature和publicKey从Buffer中还原回去
+    signature = Buffer.from(signature, 'hex');
+    publicKey = Buffer.from(publicKey, 'hex');
+
+    const messageHash = genDigest({from, to, amount});
+    return secp256k1.ecdsaVerify(signature, messageHash, publicKey);
+}
+
+const messageDigest = (message) => {
+    return crypto.createHash('sha256').update(message).digest();
+}
+
+const genMessage = ({from, to, amount}) => {
+    return `${from}-${to}-${amount}`;
+}
+
+const genDigest = ({from, to, amount}) => {
+    return messageDigest(genMessage({from, to, amount}));
 }
 
 // 生成公私钥对,并保存进json文件
@@ -50,18 +69,20 @@ const generateKeys = (filename) => {
     // 恢复文件名
     file = file.join('.');
 
-    // 生成公私钥对
-    const keyPair = ec.genKeyPair();
+    // 生成私钥， 生成格式为uint8Array
+    const privateKey = crypto.randomBytes(32);
+    // 生成公钥
+    const publicKey = secp256k1.publicKeyCreate(privateKey);
 
     // 将公私钥对存入json文件
     const keys = {
-        publicKey: keyPair.getPublic('hex'),
-        privateKey: keyPair.getPrivate('hex')
+        publicKey: Buffer.from(publicKey).toString('hex'),
+        privateKey: Buffer.from(privateKey).toString('hex')
     }
     const data = JSON.stringify(keys);
     fs.writeFile(file, data, (err) => {
         if (err) throw err;
-        console.log('生成了新的公私钥对，已保存到' + file);
+        console.log('生成了新的公私钥对，已保存到' + file + '中');
     });
     return keys;
 }
@@ -100,17 +121,16 @@ const readKeys = (filename) => {
 
 // 检查公私钥对是否匹配
 const checkKeys = (keys) => {
-    return getPublicKey(keys.privateKey) === keys.publicKey;
+    return genPublicKey(keys.privateKey) === keys.publicKey;
 }
 
 // 根据私钥得到公钥
-const getPublicKey = (privateKey) => {
-    const keyPair = ec.keyFromPrivate(privateKey);
-    return keyPair.getPublic('hex');
+const genPublicKey = (privateKey) => {
+    return Buffer.from(secp256k1.publicKeyCreate(Buffer.from(privateKey, 'hex'))).toString('hex');
 }
 
-// const trans = {from: 'a', to: 'b', amount: 10};
-// const trans1 = {from: 'a1', to: 'b', amount: 10};
+// const trans = {from: '304502210083b687913ead74e1b41a7c2ca11fdee8f8d6877deff7cb5b2dce6198f699', to: 'b', amount: 10};
+// const trans1 = {from: '304502210083b687913ead74e1b41a7c2ca11fdee8f8d6877deff7cb5b2dce6198f6996', to: 'b', amount: 10};
 // const wallet = new Wallet('a');
 // const signature = wallet.sign(trans);
 // trans.signature = signature;

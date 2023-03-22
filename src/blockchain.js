@@ -14,11 +14,13 @@ const genesisBlock = {
 
 class Blockchain {
 
-    constructor() {
+    constructor(wallet_name) {
         this.blockchain = [genesisBlock];
         this.data = [];
         this.remote = {};
         this.difficulty = 2;
+
+        this.wallet = new Wallet(wallet_name);
 
         // 所有的网络节点信息，address，port
         this.peers = [];
@@ -88,23 +90,28 @@ class Blockchain {
     dispatch(data, rinfo) {
         switch (data.type) {
             case 'newPeer':
-                this.addPeer(rinfo);
                 this.send({type: 'remoteAddress', data: rinfo}, rinfo.port, rinfo.address);
                 this.send({type: 'peerList', data: this.peers}, rinfo.port, rinfo.address);
-                console.log('[信息]：新节点加入：', rinfo);
                 this.boardcast({type: 'sayhi', data: rinfo});
+                this.addPeer(rinfo);
+                console.log('[信息]：新节点加入：', rinfo);
+                console.log('[信息]：当前节点列表：', this.peers);
                 break;
             case 'remoteAddress':
                 // 存储地址，退出的时候用
                 this.remote = data.data;
+                this.addPeer(rinfo);
                 break;
             case 'peerList':
                 // 获取当前的节点列表
+                console.log('[信息]：获取到节点列表：', data.data)
                 this.addPeers(data.data);
+                console.log('[信息]：当前节点列表：', this.peers);
                 break;
             case 'sayhi':
                 this.addPeer(data.data);
                 console.log('[信息]：新节点加入：', data.data);
+                console.log('[信息]：当前节点列表：', this.peers);
                 break;
             default:
                 console.log('[信息]：收到未知消息类型：', data);
@@ -124,7 +131,7 @@ class Blockchain {
     }
 
     // 实现交易转账，姑且不使用UTXO
-    transfer(from, to, amount) {
+    trans(from, to, amount) {
 
         if (from !== '0') {
             // 交易非挖矿
@@ -135,15 +142,21 @@ class Blockchain {
             }
         }
 
-        // TODO:签名校验
+        // 签名校验
+        var signature = this.wallet.sign({from, to, amount});
 
-        const transObj = {
+        var transObj = {
             from,
             to,
-            amount
+            amount,
+            signature
         };
         this.data.push(transObj);
         return transObj;
+    }
+
+    transfer(to, amount) {
+        return this.trans(this.wallet.getPublicKey(), to, amount);
     }
 
     // 查看余额
@@ -168,11 +181,19 @@ class Blockchain {
         return balance;
     }
 
+    // 确认是否是合法转账
+    isValidTrans(trans) {
+        return verifySignature(trans, this.wallet.getPublicKey());
+    }
+
     // 挖矿
-    mine(address) {
+    mine() {
+
+        // 校验所有交易的合法性，删除非法交易
+        this.data = this.data.filter(trans => this.isValidTrans(trans));
 
         // 挖矿结束时的矿工奖励,写死奖励为100
-        this.transfer('0', address, 100);
+        this.trans('0', this.wallet.getPublicKey(), 100);
 
         const newBlock = this.generateNewBlock();
 
