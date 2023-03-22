@@ -123,6 +123,17 @@ class Blockchain {
                 let newChain = allData.blockchain;
                 this.replaceChain(newChain);
                 break;
+            case 'mine':
+                const lastBlock = this.getLastBlock();
+                if (lastBlock.hash === data.data.hash) {
+                    return;
+                }
+                if (this.isValidBlock(data.data, lastBlock)) {
+                    this.blockchain.push(data.data);
+                    this.data = [];
+                    console.log(`${rinfo.address}:${rinfo.port}挖矿成功，当前区块链长度：${this.blockchain.length}`);
+                }
+                break;
             default:
                 console.log('[信息]：收到未知消息类型：', data);
                 break;
@@ -132,7 +143,6 @@ class Blockchain {
     chat(msg) {
         this.boardcast({type: 'chat', data: msg});
     }
-
 
     // 作为种子节点使用
     ActAsSeed() {
@@ -215,6 +225,10 @@ class Blockchain {
         if (this.isValidBlock(newBlock) && this.isValidChain()) {
             this.blockchain.push(newBlock);
             this.data = [];
+            this.boardcast({
+                type: 'mine',
+                data: newBlock
+            });
             return newBlock;
         }
         return null;
@@ -291,7 +305,7 @@ class Blockchain {
             // 深拷贝
             this.blockchain = JSON.parse(JSON.stringify(newChain));
         } else {
-            console.log('[错误]：区块链不合法，无法更新');
+            console.log('[错误]：区块链不合法或太短，无法更新');
         }
     }
 
